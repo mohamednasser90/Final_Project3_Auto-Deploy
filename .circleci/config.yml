@@ -78,7 +78,7 @@ jobs:
       -checkout
       - restore_cache:
           keys: [test-frontend]
-      -run:
+      - run:
          name: run the unit tests for frontend
          command: |
            cd frontend
