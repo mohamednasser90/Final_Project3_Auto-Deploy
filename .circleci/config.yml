@@ -211,8 +211,7 @@ jobs:
     steps:
       - checkout
       - add_ssh_keys:
-          fingerprints:
-            - "f9:0f:73:86:1e:3a:48:58:bd:78:6b:15:d6:5a:6e:3e"
+          fingerprints: ["f9:0f:73:86:1e:3a:48:58:bd:78:6b:15:d6:5a:6e:3e"]          
       - attach_workspace:
           at: ~/
 
@@ -232,7 +231,31 @@ jobs:
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}   
 
-
+    # configure-infrastructure:
+    #   docker:
+    #     - image: cimg/base:stable
+    #   steps:
+    #     - checkout 
+    #     - install_ansible
+    #   - add_ssh_keys:
+    #       fingerprints: ["ca:e1:f9:ab:a8:12:a2:26:d8:53:21:93:8b:95:c9:8b"]
+    #   - attach_workspace:
+    #       at: ~/ 
+    #   - run: 
+    #       name: Install dependencies
+    #       command: |
+    #         sudo apt install -y tar gzip curl
+    #         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    #         unzip -qq awscliv2.zip
+    #         sudo ./aws/install
+    #         echo "install dependancies ok"
+    #   - run:
+    #       name: Configure server
+    #       command: |
+    #         cd .circleci/ansible
+    #         cat inventory.txt 
+    #         ansible-playbook -i inventory.txt configure-server.yml 
+    #   - destroy-environment 
 
   run-migrations:
     docker:
