@@ -303,31 +303,55 @@ jobs:
   #     - destroy-environment:
   #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}     
       # Here's where you will add some code to rollback on failure      
-  
   run-migrations:
     docker:
       - image: cimg/node:13.8.0
     steps:
       - checkout
-      - attach_workspace:
-          at: ~/.circleci/ansible/inventory.txt
       - install_awscli
       - run:
           name: Run migrations
           command: |
             cd backend
             npm install
+            npm run build
             npm run migrations > migrations_dump.txt
+            cat migrations_dump.txt
+            pwd
       - run:
           name: Send migration status to kvdb.io
           command: |
             if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             then
-              curl https://kvdb.io/${kvdb}/migration_${CIRCLE_WORKFLOW_ID:0:8}  -d '1'
+              curl -d '1' https://kvdb.io/TSed8mEd6Mqz45S4uLkB7n/migration_${CIRCLE_WORKFLOW_ID:0:8}
             fi
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}  
-      # - revert-migrations
+
+  # run-migrations:
+  #   docker:
+  #     - image: cimg/node:13.8.0
+  #   steps:
+  #     - checkout
+  #     - attach_workspace:
+  #         at: ~/.circleci/ansible/inventory.txt
+  #     - install_awscli
+  #     - run:
+  #         name: Run migrations
+  #         command: |
+  #           cd backend
+  #           npm install
+  #           npm run migrations > migrations_dump.txt
+  #     - run:
+  #         name: Send migration status to kvdb.io
+  #         command: |
+  #           if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
+  #           then
+  #             curl https://kvdb.io/${kvdb}/migration_${CIRCLE_WORKFLOW_ID:0:8}  -d '1'
+  #           fi
+  #     - destroy-environment:
+  #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}  
+  #     # - revert-migrations
 
 
   deploy-frontend:
