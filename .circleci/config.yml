@@ -1,17 +1,26 @@
 version: 2.1
 
+orbs:
+  slack: circleci/slack@4.10.1
 commands:
   destroy-environment:
     description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
     parameters:
-      # Add parameter here   
+     # Add parameter here 
+      workflow_id:
+        default: "${CIRCLE_WORKFLOW_ID:0:8}"
+        type: string     
+        
     steps:
       - run:
           name: Destroy environments
           when: on_fail
           command: |
-            # Your code here
-            exit 1
+            echo "Destroy environment: << parameters.workflow_id >> "
+            aws s3 rm s3://udapeople-<< parameters.workflow_id >> --recursive
+            aws cloudformation delete-stack --stack-name udapeople-back-end-<< parameters.workflow_id >> 
+            aws cloudformation delete-stack --stack-name udapeople-front-end-<< parameters.workflow_id >>
+
 
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.
@@ -138,55 +147,51 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: scan-backend      
-#   scan-frontend:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       # Restore from cache
-#       # Your job code here
 
-#   scan-backend:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       # Restore from cache
-#       # Your job code here
+  deploy-infrastructure:
+    docker:      
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            yum install tar gzip curl -y
+      - run:
+          name: Ensure back-end infrastructure exists
+          command: |
+            aws cloudformation deploy \
+              --template-file .circleci/files/backend.yml \
+              --tags project=udapeople-back-end-${CIRCLE_WORKFLOW_ID:0:8} \
+              --stack-name udapeople-back-end-${CIRCLE_WORKFLOW_ID:0:8} \
+              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:8}" 
+             
+      - run:
+          name: Ensure front-end infrastructure exist
+          command: |
+            aws cloudformation deploy \
+              --template-file .circleci/files/frontend.yml \
+              --tags project=udapeople-front-end-${CIRCLE_WORKFLOW_ID:0:8} \
+              # --stack-name udapeople-front-end-${CIRCLE_WORKFLOW_ID:0:8} \
+              # --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:8}"  
+            
+      - run:
+          name: Add back-end ip to ansible inventory
+          command: |
+            aws ec2 describe-instances \
+              --query 'Reservations[*].Instances[*].PublicIpAddress' \
+              --filters "Name=tag:project,Values=udapeople-back-end-${CIRCLE_WORKFLOW_ID:0:8}" \
+              --output text >> .circleci/ansible/inventory.txt
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project/.circleci/ansible/inventory.txt
 
-#   deploy-infrastructure:
-#     docker:
-#       # Docker image here that supports AWS CLI
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Ensure back-end infrastructure exists
-#           command: |
-#             aws cloudformation deploy \
-#               --template-file .circleci/files/backend.yml \
-#               #--tags project=your-tag \
-#               # --stack-name "your back-end stack name with workflow id" \
-#               # --parameter-overrides ID="your workflow id"  
-#               exit 1
-#       - run:
-#           name: Ensure front-end infrastructure exist
-#           command: |
-#             aws cloudformation deploy \
-#               --template-file .circleci/files/frontend.yml \
-#               #--tags project=your-tag \
-#               # --stack-name "your front-end stack name with workflow id" \
-#               # --parameter-overrides ID="your workflow id"  
-#               exit 1
-#       - run:
-#           name: Add back-end ip to ansible inventory
-#           command: |
-#             # Your code here
-#             exit 1
-#       - persist_to_workspace:
-#           root: ~/
-#           paths:
-#             - project/.circleci/ansible/inventory.txt
-#       # Here's where you will add some code to rollback on failure      
+      - destroy-environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}      
+      # Here's where you will add some code to rollback on failure      
+
+
 
 #   configure-infrastructure:
 #     docker:
