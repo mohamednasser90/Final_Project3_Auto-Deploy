@@ -355,26 +355,9 @@ jobs:
           name: Run migrations
           command: |
             cd backend
-            npm install            
-            npm audit fix   --audit-level=critical
-            npm audit fix  --force --audit-level=critical
-            npm audit  --audit-level=critical
+            npm install        
             npm run migrations > migrations_dump.txt
-    # steps:
-    #   - checkout
-    #   # - attach_workspace:
-    #   #     at: ~/.circleci/ansible/inventory.txt
-    #   - install_awscli
-      # - run:
-      #     name: Run migrations
-      #     command: |
-      #       cd backend
-      #       npm install
-      #       npm audit fix --force
-      #       npm audit fix --audit-level=critical
-      #       # npm run build  
-      #       npm run migrations > migrations_dump.txt
-      #       cat migrations_dump.txt
+    
       - persist_to_workspace:
           root: ~/
           paths:
