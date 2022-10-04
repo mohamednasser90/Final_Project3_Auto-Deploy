@@ -336,25 +336,23 @@ jobs:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8} 
       - notify_on_failure    
 
+ 
   deploy-backend:
     docker:
-      - image: cimg/base:stable
+      - image: python:3.7-alpine3.11
     steps:
-      - checkout
-      - install_awscli
-      - install_ansible
-      - install_nodejs
-      - add_ssh_keys:
+      - checkout 
+      - add_ssh_keys: 
           fingerprints: ["f9:0f:73:86:1e:3a:48:58:bd:78:6b:15:d6:5a:6e:3e"]
       - attach_workspace:
-          at: ~/
+          at: ~/ 
       - restore_cache:
-          keys: [backend-build]
+          keys: [backend-build]    
       - run:
           name: Install dependencies
           command: |
-            cd backend
-            npm install
+            apk add --update ansible curl tar gzip openssh nodejs npm            
+            pip install awscli
       - run:
           name: Package Backend
           command: |
@@ -371,53 +369,13 @@ jobs:
             export TYPEORM_MIGRATIONS=./migrations/*.ts
             cd .circleci/ansible
             cat inventory.txt
-            ansible-playbook -i inventory.txt deploy-backend.yml
+            ansible-playbook -i inventory.txt deploy-backend.yml      
+      
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
-      - notify_on_failure  
-
-
-  # deploy-backend:
-  #   docker:
-  #     - image: python:3.7-alpine3.11
-  #   steps:
-  #     - checkout 
-  #     - add_ssh_keys: 
-  #         fingerprints: ["f9:0f:73:86:1e:3a:48:58:bd:78:6b:15:d6:5a:6e:3e"]
-  #     - attach_workspace:
-  #         at: ~/ 
-  #     - restore_cache:
-  #         keys: [backend-build]    
-  #     - run:
-  #         name: Install dependencies
-  #         command: |
-  #           apk add --update ansible curl tar gzip openssh nodejs npm            
-  #           pip install awscli
-  #     - run:
-  #         name: Package Backend
-  #         command: |
-  #           cd backend
-  #           npm run build
-  #           tar -czf artifact.tar.gz dist/* package*
-  #           cd ..
-  #           cp backend/artifact.tar.gz .circleci/ansible/roles/deploy/files
-  #     - run:
-  #         name: Deploy backend
-  #         command: |
-  #           export TYPEORM_MIGRATIONS_DIR=./migrations
-  #           export TYPEORM_ENTITIES=./modules/domain/**/*.entity{.ts,.js}
-  #           export TYPEORM_MIGRATIONS=./migrations/*.ts
-  #           cd .circleci/ansible
-  #           cat inventory.txt
-  #           ansible-playbook -i inventory.txt deploy-backend.yml      
-      
-  #     - destroy-environment:
-  #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
-  #     - revert-migrations:
-  #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
-  #     - notify_on_failure    
+      - notify_on_failure    
         
 
   smoke-test:
