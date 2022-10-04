@@ -81,7 +81,8 @@ commands:
               # npm install
               npm run migration:revert
             fi
-# build-frontend and install dependencies        
+# build-frontend and install dependencies 
+
 jobs:
   build-frontend:
     docker:
@@ -388,12 +389,7 @@ jobs:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}  
       - notify_on_failure
 
-
-
-
-
-
-   deploy-frontend:
+  deploy-frontend:
     docker:
       - image: cimg/base:stable
     steps:
@@ -429,6 +425,7 @@ jobs:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}   
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8} 
+      - notify_on_failure    
 
   # deploy-frontend:
   #   docker:
@@ -514,6 +511,7 @@ jobs:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
+      - notify_on_failure    
         
 #   deploy-backend:
 #     docker:
