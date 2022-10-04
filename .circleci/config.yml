@@ -342,6 +342,7 @@ jobs:
           command: |
             cd backend
             npm install
+            npm audit fix --force
             npm audit fix --audit-level=critical
             # npm run build  
             npm run migrations > migrations_dump.txt
@@ -364,7 +365,7 @@ jobs:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}  
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}  
-          
+
 
 
 
