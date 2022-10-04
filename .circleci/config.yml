@@ -348,7 +348,6 @@ jobs:
             cd backend
             echo "Done"            
             rm package-lock.json
-            rm -r node_modules
             npm update
             npm cache clear --force            
             echo "Done"
