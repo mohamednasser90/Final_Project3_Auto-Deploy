@@ -3,6 +3,14 @@ version: 2.1
 orbs:
   slack: circleci/slack@4.10.1
 commands:
+
+  notify_on_failure:
+    steps:
+      - slack/notify:
+          event: fail
+          channel: dot-net
+          template: basic_fail_1
+
   install_awscli:
       description: Install AWS CLI v2 
       steps:
@@ -82,7 +90,7 @@ jobs:
       - save_cache:
           paths: [frontend/node_modules]
           key: frontend-build
-
+      - notify_on_failure
 
   #build-backend and install dependencies
   build-backend:
@@ -101,7 +109,7 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: backend-build
-
+      - notify_on_failure
 
 
   test-frontend:
@@ -120,6 +128,7 @@ jobs:
       - save_cache:
           paths: [frontend/node_modules]
           key: test-frontend  
+      - notify_on_failure    
 
   test-backend:
     docker:
@@ -137,6 +146,8 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: test-backend         
+      - notify_on_failure
+
 
   scan-frontend:
     docker:
@@ -154,6 +165,7 @@ jobs:
       - save_cache:
           paths: [frontend/node_modules]
           key: scan-frontend
+      - notify_on_failure
 
   scan-backend:
     docker:
@@ -171,6 +183,8 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: scan-backend      
+      - notify_on_failure
+
 
   deploy-infrastructure:
     docker:      
@@ -213,7 +227,8 @@ jobs:
 
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}      
-      # Here's where you will add some code to rollback on failure      
+      - notify_on_failure
+       # Here's where you will add some code to rollback on failure      
 
 
 
@@ -270,7 +285,7 @@ jobs:
             ansible-playbook -i inventory.txt configure-server.yml 
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8} 
-
+      - notify_on_failure
 
   # run-migrations:
   #   docker:
@@ -340,7 +355,7 @@ jobs:
           command: |
             cd backend
             npm install            
-            npm audit fix  --force --audit-level=critical
+            npm audit fix   --audit-level=critical
             npm audit fix  --force --audit-level=critical
             npm audit  --audit-level=critical
             npm run migrations > migrations_dump.txt
@@ -377,6 +392,7 @@ jobs:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}  
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}  
+      - notify_on_failure
 
 
 
