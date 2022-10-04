@@ -6,7 +6,7 @@ Parameters:
     Description: Unique identifier.
     Type: String
 
-Resources:
+Resourcess:
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
