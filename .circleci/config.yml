@@ -346,11 +346,11 @@ jobs:
           name: Run migrations
           command: |
             cd backend
-            echo "Done"
-            rm -rf node_modules
+            echo "Done"            
             rm package-lock.json
-            npm cache clear --force
-            npm install
+            rm -r node_modules
+            npm update
+            npm cache clear --force            
             echo "Done"
             npm run migrations > migration_dump.txt
             echo "Done"
