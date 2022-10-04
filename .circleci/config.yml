@@ -334,6 +334,8 @@ jobs:
       - image: circleci/node:13.8.0
     steps:
       - checkout
+      - attach_workspace:
+          at: ~/.circleci/ansible/inventory.txt
       - install_awscli
       # - run:
       #     name: Install Dependencies
