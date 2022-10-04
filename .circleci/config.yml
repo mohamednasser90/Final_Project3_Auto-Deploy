@@ -188,13 +188,14 @@ jobs:
 
   deploy-infrastructure:
     docker:      
-      - image: amazon/aws-cli
+      - image: cimg/base:stable
     steps:
       - checkout
-      - run:
-          name: Install dependencies
-          command: |
-            yum install tar gzip curl -y
+      - install_awscli
+      # - run:
+      #     name: Install dependencies
+      #     command: |
+      #       yum install tar gzip curl -y
       - run:
           name: Ensure back-end infrastructure exists
           command: |
@@ -268,7 +269,7 @@ jobs:
           fingerprints: ["f9:0f:73:86:1e:3a:48:58:bd:78:6b:15:d6:5a:6e:3e"]
       - attach_workspace:
           at: ~/ 
-      - install_awscli    
+      # - install_awscli    
       # - run: 
       #     name: Install dependencies
       #     command: |
@@ -608,7 +609,15 @@ jobs:
 #             fi
             
 
-
+  notify_on_success:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - slack/notify:  
+          event: pass
+          channel: dot-net
+          template: basic_success_1
+        
 
 workflows:
   default:
@@ -642,3 +651,5 @@ workflows:
       #     requires: [smoke-test]
       # - cleanup:
       #     requires: [cloudfront-update]
+      - notify_on_success:
+           requires: [build-frontend,build-backend,test-frontend, test-backend, scan-frontend, scan-backend,deploy-infrastructure,configure-infrastructure,run-migrations,deploy-backend, deploy-frontend]
