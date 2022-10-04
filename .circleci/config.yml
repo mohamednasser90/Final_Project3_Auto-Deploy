@@ -348,7 +348,8 @@ jobs:
             cd backend                     
             rm package-lock.json            
             npm cache clear --force  
-            npm install          
+            npm install   
+            npm audit fix --audit-level=critical       
             echo "Done"
             npm run migrations > migration_dump.txt
             echo "Done"
