@@ -378,46 +378,6 @@ jobs:
       - notify_on_failure  
 
 
-  # deploy-backend:
-  #   docker:
-  #     - image: python:3.7-alpine3.11
-  #   steps:
-  #     - checkout 
-  #     - add_ssh_keys: 
-  #         fingerprints: ["f9:0f:73:86:1e:3a:48:58:bd:78:6b:15:d6:5a:6e:3e"]
-  #     - attach_workspace:
-  #         at: ~/ 
-  #     - restore_cache:
-  #         keys: [backend-build]    
-  #     - run:
-  #         name: Install dependencies
-  #         command: |
-  #           apk add --update ansible curl tar gzip openssh nodejs npm            
-  #           pip install awscli
-  #     - run:
-  #         name: Package Backend
-  #         command: |
-  #           cd backend
-  #           npm run build
-  #           tar -czf artifact.tar.gz dist/* package*
-  #           cd ..
-  #           cp backend/artifact.tar.gz .circleci/ansible/roles/deploy/files
-  #     - run:
-  #         name: Deploy backend
-  #         command: |
-  #           export TYPEORM_MIGRATIONS_DIR=./migrations
-  #           export TYPEORM_ENTITIES=./modules/domain/**/*.entity{.ts,.js}
-  #           export TYPEORM_MIGRATIONS=./migrations/*.ts
-  #           cd .circleci/ansible
-  #           cat inventory.txt
-  #           ansible-playbook -i inventory.txt deploy-backend.yml      
-      
-  #     - destroy-environment:
-  #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
-  #     - revert-migrations:
-  #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
-  #     - notify_on_failure    
-        
 
   smoke-test:
     docker:
@@ -476,48 +436,36 @@ jobs:
           command: |
             aws cloudformation deploy \
               --template-file .circleci/files/cloudfront.yml \
-              --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:8}" \
+              --parameter-overrides WorkflowID="udapeople-${CIRCLE_WORKFLOW_ID:0:8}" \
               --stack-name InitialStack
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
       - notify_on_failure  
-
-#   cloudfront-update:
-#     docker:
-#       # Docker image here that supports AWS CLI
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Install dependencies
-#           command: |
-#             # your code here
-#       - run:
-#           name: Update cloudfront distribution
-#           command: |
-#             # your code here
-#       # Here's where you will add some code to rollback on failure  
-
-# cleanup:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Get old stack workflow id
-#           command: |
-#             # your code here
-#             export OldWorkflowID="the id here"
-#             export STACKS=[] #put the list of stacks here
-#       - run:
-#           name: Remove old stacks and files
-#           command: |
-#             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
-#             then
-#               # your code here
-#             fi
-            
+        
+  cleanup:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - install_awscli
+      - install_nodejs
+      - run:
+          name: remove old stacks & files
+          command: |
+            export STACKS=($(aws cloudformation list-stacks \
+                --query "StackSummaries[*].StackName" \
+                --stack-status-filter CREATE_COMPLETE --no-paginate --output text)) 
+            echo Stack names: "${STACKS[@]}"
+            export OldWorkflowID=$(curl --insecure https://kvdb.io/${kvdb}/old_workflow_id)
+            echo Old Workflow ID: $OldWorkflowID 
+            if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+            then
+              aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
+              aws cloudformation delete-stack --stack-name "udapeople-back-end-${OldWorkflowID}"
+              aws cloudformation delete-stack --stack-name "udapeople-front-end-${OldWorkflowID}"
+            fi
 
   notify_on_success:
     docker:
@@ -559,7 +507,7 @@ workflows:
           requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
           requires: [smoke-test]
-      # - cleanup:
-      #     requires: [cloudfront-update]
+      - cleanup:
+          requires: [cloudfront-update]
       - notify_on_success:
            requires: [build-frontend,build-backend,test-frontend, test-backend, scan-frontend, scan-backend,deploy-infrastructure,configure-infrastructure,run-migrations,deploy-backend, deploy-frontend,smoke-test,cloudfront-update]
