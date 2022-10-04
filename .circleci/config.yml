@@ -348,7 +348,7 @@ jobs:
             cd backend
             echo "Done"
             rm -rf node_modules
-            rm package-lock.json yarn.lock
+            rm package-lock.json
             npm cache clear --force
             npm install
             echo "Done"
