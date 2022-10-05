@@ -1,0 +1,9 @@
+https://github.com/mohamednasser90/Final_Project3_Auto-Deploy
+http://udapeople-b83873ac.s3-website-us-east-1.amazonaws.com
+http://d2osnplzs2oy3k.cloudfront.net
+
+
+ec2-3-216-1-198.compute-1.amazonaws.com
+http://3.216.1.198:3030/api/status
+
+ec2-44-202-115-160.compute-1.amazonaws.com
