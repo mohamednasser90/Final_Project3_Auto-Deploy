@@ -455,20 +455,19 @@ jobs:
           at: ~/
       - run:
           name: Fetch Old Stacks Workflow ID
-          command: |
-            export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
-            --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
-            echo Stack names: "${STACKS[@]}"
-            export OldWorkflowID=$(curl --insecure https://kvdb.io/${kvdb}/old_workflow_id)
+          command: |       
             export OldWorkflowID=$(aws cloudformation \
             list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
             --no-paginate --output text)
+            export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
+            --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
+            
 
             echo  "${OldWorkflowID}"
             echo  Old Workflow ID: $OldWorkflowID 
             echo  "${OldWorkflowID}"
             
-            if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+            if [ "${CIRCLE_WORKFLOW_ID:0:7}" != "${OldWorkflowID}" ]
             then
               echo ${OldWorkflowID}
               echo ${CIRCLE_WORKFLOW_ID:0:8}
