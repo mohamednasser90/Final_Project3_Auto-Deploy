@@ -448,7 +448,7 @@ jobs:
       - attach_workspace:
           at: ~/
       - run:
-          name: Remove old stacks and files
+          name: Fetch old stacks and Workflow ID
           command: |
             export OldWorkflowID=$(aws cloudformation \
             list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
