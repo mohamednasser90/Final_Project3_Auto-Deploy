@@ -234,6 +234,7 @@ jobs:
           root: ~/
           paths:
             - project/.circleci/ansible/inventory.txt
+            - project/workflow_id.txt
 
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}      
@@ -445,39 +446,71 @@ jobs:
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
       - notify_on_failure  
-        
   cleanup:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/aws:2022.06
     steps:
       - checkout
-      - install_awscli
-      - install_nodejs
+      - attach_workspace:
+          at: ~/
       - run:
-          name: fetch old stacks workflowID
+          name: Remove old stacks and files
           command: |
-            export STACKS=($(aws cloudformation list-stacks \
-                --query "StackSummaries[*].StackName" \
-                --stack-status-filter CREATE_COMPLETE --no-paginate --output text)) 
-            echo Stack names: "${STACKS[@]}"
-            
-            export OldWorkflowID=$(curl --insecure https://kvdb.io/${kvdb}/old_workflow_id)
-           
-            echo  "${OldWorkflowID}"
-            echo  Old Workflow ID: $OldWorkflowID 
-            echo  "${OldWorkflowID}"
-            
-            if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+            export OldWorkflowID=$(aws cloudformation \
+            list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+            --no-paginate --output text)
+            export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
+            --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
+            if [ "${CIRCLE_WORKFLOW_ID:0:8}" != "${OldWorkflowID}" ]
             then
+              echo ${OldWorkflowID}
+              echo ${CIRCLE_WORKFLOW_ID:0:8}
               echo "-------------------------------Delete Confirmed----------------------------------------------"
               aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
+              aws s3 rm "s3://udapeople-${OldWorkflowID}" --force
+              aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}" 
               aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
-              aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
-            else  
+            else
               echo "-------------------------------cannot Cleanup----------------------------------------------"
             fi
+      - destroy-environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
+      - revert-migrations:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
+      - notify_on_failure  
+
+  # cleanup:
+  #   docker:
+  #     - image: cimg/base:stable
+  #   steps:
+  #     - checkout
+  #     - install_awscli
+  #     - install_nodejs
+  #     - run:
+  #         name: fetch old stacks workflowID
+  #         command: |
+  #           export STACKS=($(aws cloudformation list-stacks \
+  #               --query "StackSummaries[*].StackName" \
+  #               --stack-status-filter CREATE_COMPLETE --no-paginate --output text)) 
+  #           echo Stack names: "${STACKS[@]}"
             
-            echo "-------------------------------cannot Confirmed----------------------------------------------"
+  #           export OldWorkflowID=$(curl --insecure https://kvdb.io/${kvdb}/old_workflow_id)
+           
+  #           echo  "${OldWorkflowID}"
+  #           echo  Old Workflow ID: $OldWorkflowID 
+  #           echo  "${OldWorkflowID}"
+
+  #           if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+  #           then
+  #             echo "-------------------------------Delete Confirmed----------------------------------------------"
+  #             aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
+  #             aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
+  #             aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+  #           else  
+  #             echo "-------------------------------cannot Cleanup----------------------------------------------"
+  #           fi
+            
+  #           echo "-------------------------------cannot Confirmed----------------------------------------------"
 
   notify_on_success:
     docker:
