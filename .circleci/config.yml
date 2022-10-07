@@ -70,7 +70,7 @@ commands:
           name: Revert migrations
           when: on_fail
           command: |
-            SUCCESS=$(curl --insecure  https://kvdb.io/VRk3WeX9qUn7hEfaC2v2Dt/migration_<< parameters.workflow_id >>)
+            SUCCESS=$(curl --insecure  https://kvdb.io/${kvdb}/migration_<< parameters.workflow_id >>)
             # Logic for reverting the database state
             if (( $SUCCESS == 1 ));
             then
@@ -276,7 +276,7 @@ jobs:
           command: |   
               if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
               then
-                  curl --insecure https://kvdb.io/VRk3WeX9qUn7hEfaC2v2Dt/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
+                  curl --insecure https://kvdb.io/${kvdb}/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
               fi
            
       - destroy-environment:
@@ -322,47 +322,6 @@ jobs:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7} 
       - notify_on_failure    
 
-  # deploy-frontend:
-  #   docker:
-  #     - image: cimg/base:stable
-  #   steps:
-  #     - checkout 
-  #     - install_awscli
-  #     - install_nodejs
-  #     # - run:
-  #     #     name: Install dependencies
-  #     #     command: |
-  #     #       sudo apt update && sudo apt upgrade
-  #     #       sudo apt-get install python python-pip 
-  #     #       sudo pip install awscli 
-  #     #       python -m pip install --user ansible
-  #     #       npm install
-  #     #       sudo apt-get install curl
-  #     #       sudo apt-get install tar gzip
-  #     - run:
-  #         name: Get backend url
-  #         command: |
-  #           export BACKEND_IP=$(aws ec2 describe-instances 
-  #           --query 'Reservations[*].Instances[*].PublicIpAddress' 
-  #           --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" 
-  #           --output text)
-  #           export API_URL="http://${BACKEND_IP}:3030"          
-  #           echo "API_URL = $API_URL"
-  #           echo API_URL="http://${BACKEND_IP}:3030" >> frontend/.env
-  #           cat frontend/.env   
-  #     - run:
-  #         name: Deploy frontend objects
-  #         command: |
-  #           cd frontend
-  #           npm install
-  #           npm run build
-  #           tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
-  #           aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
-  #     - destroy-environment:
-  #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}   
-  #     - revert-migrations:
-  #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:7} 
-  #     - notify_on_failure  
 
   deploy-backend:
     docker:
@@ -458,10 +417,13 @@ jobs:
       - run:
           name: Update cloudfront distribution
           command: |
-            aws cloudformation \
-            list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
-            --no-paginate --output text > ~/OldWorkflowID.txt
+            export OLD_WORKFLOW_ID=$(aws cloudformation \
+                      list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+                      --no-paginate --output text > ~/OldWorkflowID.txt)
             
+            echo 'cat ~/OldWorkflowID.txt'
+            curl https://kvdb.io/${kvdb}/old_workflow_id -d "${OLD_WORKFLOW_ID}"
+
             aws cloudformation deploy \
             --template-file .circleci/files/cloudfront.yml \
             --stack-name InitialStack \
@@ -479,6 +441,7 @@ jobs:
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - notify_on_failure  
+
   cleanup:
     docker:
       - image: cimg/node:13.8.0
@@ -489,14 +452,20 @@ jobs:
       - run:
           name: Remove old stacks and files
           command: | 
-            export OldWorkflowID=$(aws cloudformation \
-                    list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
-                    --no-paginate --output text)
+            # export OldWorkflowID=$(aws cloudformation \
+            #         list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+            #         --no-paginate --output text)
        
             export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
                     --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
+            export OldWorkflowID=$(curl --insecure https://kvdb.io/${kvdb}/old_workflow_id)
 
-            echo OldWorkflowID: "${OldWorkflowID}"
+            # echo Old Workflow ID: $OldWorkflowID 
+            echo  "${OldWorkflowID}"
+            echo  Old Workflow ID: $OldWorkflowID 
+            echo  "${OldWorkflowID}"
+
+            # echo OldWorkflowID: "${OldWorkflowID}"
             echo CIRCLE_WORKFLOW_ID "${CIRCLE_WORKFLOW_ID:0:7}"
             echo Stack names: "${STACKS[@]}"
 
@@ -514,35 +483,6 @@ jobs:
       - revert-migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - notify_on_failure  
-  # cleanup:
-  #   docker:
-  #     - image: amazon/aws-cli
-  #   steps:
-  #     - checkout
-  #     - run: yum install -y tar gzip
-  #     - attach_workspace:
-  #         at: ~/
-  #     - run:
-  #         name: Fetch old stack workflow id
-  #         command: |
-  #           export OldWorkflowID=$(cat ~/OldWorkflowID.txt)
-  #           echo OldWorkflowID: "${OldWorkflowID}"
-  #           echo $OldWorkflowID 
-
-  #           if [[ "${CIRCLE_WORKFLOW_ID:0:7}" != "${OldWorkflowID}" ]]
-  #           then
-  #             echo "-----------------------Delete Confirmed------------------------"
-  #             aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
-  #             aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
-  #             aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}" 
-  #           else
-  #             echo "------------------------Cannot Cleanup-------------------------"
-  #           fi
-  #     - destroy-environment:
-  #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
-  #     - revert-migrations:
-  #         workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
-  #     - notify_on_failure  
 
   notify_on_success:
     docker:
