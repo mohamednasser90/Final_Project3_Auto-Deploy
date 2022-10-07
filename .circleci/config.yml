@@ -453,9 +453,12 @@ jobs:
       - checkout
       - install_awscli
       - install_nodejs
+      - attach_workspace:
+          at: ~/
       - run:
           name: Remove old stacks and files
           command: | 
+            echo 'cat ~/OldWorkflowID.txt'
             export OldWorkflowID=$(cat ~/OldWorkflowID.txt)
             echo OldWorkflowID: "${OldWorkflowID}"
             echo $OldWorkflowID 
