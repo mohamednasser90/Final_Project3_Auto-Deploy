@@ -327,19 +327,20 @@ jobs:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7} 
       - notify_on_failure  
 
+
   deploy-backend:
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
+      - install_awscli
+      - install_ansible
+      - install_nodejs    
 
       - add_ssh_keys:
           fingerprints: ["32:a4:19:29:b4:49:ad:64:72:5d:b3:02:af:81:b2:52"]
       - attach_workspace:
           at: ~/
-      - install_awscli
-      - install_ansible
-      - install_nodejs    
       # - run:
       #     name: Install dependencies
       #     command: |
