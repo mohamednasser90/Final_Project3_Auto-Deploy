@@ -373,50 +373,34 @@ jobs:
   
   smoke-test:
       docker:
-        - image: python:3.7-alpine3.11 
+        - image: cimg/base:stable
       steps:
         - checkout
+        - install_awscli
+        - install_nodejs
         - run:
-            name: Install dependencies
+            name: Back-end smoke-test.
             command: |
-              apk add --update nodejs npm curl
-              apk add --update --no-cache python3 py3-pip
-              /usr/local/bin/python -m pip install --upgrade pip
-              pip install awscli
-              aws --version
-        - run:
-            name: Get backend url
-            command: |
-              export BACKEND_IP=$(aws ec2 describe-instances 
-              --query 'Reservations[*].Instances[*].PublicIpAddress' 
-              --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" 
-              --output text)
-        - run:
-            name: Backend smoke test.
-            command: |
-              export BACKEND_IP=$(aws ec2 describe-instances 
-              --query 'Reservations[*].Instances[*].PublicIpAddress' 
-              --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" 
-              --output text)
-              echo "BACKEND_IP=${BACKEND_IP}"
-              export API_URL="http://${BACKEND_IP}:3030"
-              echo "API_URL=${API_URL}"
-              if curl "${API_URL}/api/status" | grep "ok"
+              BACKEND_IP=$(aws ec2 describe-instances \
+                --query 'Reservations[*].Instances[*].PublicIpAddress' \
+                --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+                --output text)
+              export API_URL=http://${BACKEND_IP}:3030
+              if curl -s $API_URL/api/status | grep "ok"
               then
-                  return 0
+                exit 0
               else
-                  return 1
+                exit 1
               fi
         - run:
-            name: Frontend smoke test.
+            name: Front-end smoke-test.
             command: |
-              URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website-eu-west-3.amazonaws.com/#/employees"            
-              echo ${URL} 
-              if curl -s ${URL} | grep "Welcome"
+              FRONTEND_WEBSITE=http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website.${AWS_DEFAULT_REGION}.amazonaws.com
+              if curl -s $FRONTEND_WEBSITE | grep "Welcome"
               then
-                return 0
+                exit 0
               else
-                return 1
+                exit 1
               fi
               
         - destroy-environment:
@@ -454,9 +438,9 @@ jobs:
           paths: 
             - OldWorkflowID.txt
       - destroy-environment:
-          workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - revert-migrations:
-          workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - notify_on_failure  
 
   cleanup:
@@ -484,9 +468,9 @@ jobs:
               echo "------------------------Cannot Cleanup-------------------------"
             fi
       - destroy-environment:
-          workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - revert-migrations:
-          workflow_id: ${CIRCLE_WORKFLOW_ID:0:8}
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - notify_on_failure  
 
   notify_on_success:
